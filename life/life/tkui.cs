@@ -78,7 +78,7 @@ namespace life
 
         //viewpoint
         Vector3 ViewPointV = new Vector3(-1f, -1f, 0f);
-        public float ZoomMulti = 0.08f;
+        public float ZoomMulti = 0.2f;
         //speed
         public int SimulationSpeed = 20;
 
@@ -98,13 +98,13 @@ namespace life
 
 				//seed array
 				Random rand = new Random ();
-				for (int i = 0; i < iSizeOfGrid; i ++) {
-					for (int z = 0; z < iSizeOfGrid; z ++) {
-						arrAlive [i, z] = rand.Next (2);
+				for (int i = 200; i < iSizeOfGrid-200; i ++) {
+					for (int z = 200; z < iSizeOfGrid-200; z ++) {
+						arrAlive [i, z] = rand.Next (3);
 					}
 				}
 
-				Console.WriteLine (arrAlive.ToString ());
+				//Console.WriteLine (arrAlive.ToString ());
 
 
 
@@ -117,7 +117,7 @@ namespace life
 				{
 					// setup settings, load textures, sounds
 					game.VSync = VSyncMode.On;
-                    game.Title = "AIMIS Simulation";
+                    game.Title = "LIFE";
 				};
 
 				game.Resize += (sender, e) =>
@@ -183,6 +183,24 @@ namespace life
                     {
                         //for adding object
                         MoCdvec = MousePosition(e.X, e.Y, game);
+
+					if(e.X < 5 && e.Y < 5) {
+						if(SimulationSpeed == 0)
+							SimulationSpeed = 20;						
+						else
+							SimulationSpeed = 0;
+					}
+
+				
+
+					if(e.Mouse.LeftButton == ButtonState.Pressed) {
+
+
+						try{
+							arrAlive[(int)MoCdvec.X, (int)MoCdvec.Y] = 1;}
+						catch {}
+					}
+
                         
                         //for moving viewpoint
                         if(e.Mouse.RightButton == ButtonState.Pressed)
@@ -199,7 +217,23 @@ namespace life
                         {
                             case 'f':
                                 game.WindowState = WindowState.Fullscreen;
-                                break;           
+                                break;
+					case 'p':
+						if(SimulationSpeed == 0)
+							SimulationSpeed = 20;						
+						else
+							SimulationSpeed = 0;
+						break;
+
+					case 'c':
+						
+						//seed array
+						for (int i = 0; i < iSizeOfGrid; i ++) {
+							for (int z = 0; z < iSizeOfGrid; z ++) {
+								arrAlive [i, z] = 0;
+							}
+						}
+						break;
 						}
 
                     };
@@ -265,6 +299,7 @@ namespace life
                         SimulationSlowDownStep = 0;
                         
 
+					Console.WriteLine(SimulationSpeed);
 					for(int zx = 20; (zx < SimulationSpeed || zx == 20) && SimulationSlowDownStep == 0; zx ++) {
 
 						int[,] arrNextTo = new int[iSizeOfGrid, iSizeOfGrid];
@@ -313,7 +348,7 @@ namespace life
 					//Draw Cells
 					for (int x = 0; x < iSizeOfGrid; x ++) {
 						//Console.WriteLine('n');
-						for (int y = 0; y < iSizeOfGrid; y ++) {
+						for (int y = 0; y <  iSizeOfGrid; y ++) {
 						//	Console.Write(arrAlive[x,y]);
 							if(arrAlive[x,y] == 1){
 								GL.Vertex2(x,y);
@@ -324,16 +359,11 @@ namespace life
 						}
 					}
 
-					GL.Vertex2(0,0);
-					GL.Vertex2(0,1);
-					GL.Vertex2(1,1);
-					GL.Vertex2(1,0);
-					GL.Vertex2(2,1);
-					GL.Vertex2(2,2);
-					GL.Vertex2(3,2);
-					GL.Vertex2(3,1);
 					GL.End();
 
+					DrawCircle(30,ViewPointV.X, ViewPointV.Y,1);
+
+					Console.WriteLine(game.RenderFrequency);
 
                     //load onto screen
 					game.SwapBuffers ();
