@@ -1,2 +1,3 @@
-# gameoflife
-game of life using opentk
+# Conway's Game of Life
+
+Conway's Game of Life written in C# using OpenTK.
