@@ -35,6 +35,7 @@ namespace LifeGame
         public void DrawCircle(int segments, float xpos, float ypos, float radius)
         {
             GL.Begin(PrimitiveType.Polygon);
+
             for (int i = 0; i < segments; i++)
             {
                 float theta = (2.0f * (float)Math.PI * i) / (float)segments;
@@ -42,6 +43,7 @@ namespace LifeGame
                 float cyy = radius * (float)Math.Sin(theta);
                 GL.Vertex2(xpos + cxx, ypos + cyy);
             }
+
             GL.End();
         }
 
@@ -54,30 +56,6 @@ namespace LifeGame
                 0 - ((mY) / (float)game.Height - 0.5f)
                 * game.Height * 2 * ZoomMulti - ViewPointV.Y * game.Height * ZoomMulti);
             return vecMousePos;
-        }
-
-        //For the textures - ie image of earth
-        //loads a bitmap, and returns it's location as an int
-        public static int LoadTexture(Bitmap bitmap)
-        {
-            int texture;
-            GL.GenTextures(1, out texture);
-            GL.BindTexture(TextureTarget.Texture2D, texture);
-
-            BitmapData data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height),
-                ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
-            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0,
-                OpenTK.Graphics.OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, data.Scan0);
-
-            bitmap.UnlockBits(data);
-            bitmap.Dispose();
-
-
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)All.Linear);
-
-
-            return texture;
         }
 
         //variables
