@@ -12,6 +12,7 @@
  */
 
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using OpenTK;
 using OpenTK.Graphics;
@@ -19,10 +20,17 @@ using OpenTK.Graphics.OpenGL;
 using OpenTK.Input;
 using System.Drawing.Imaging;
 
-namespace life
+namespace LifeGame
 {
-    public class Tkui
+    public class Game
     {
+
+#if DEBUG
+        // Debug stopwatches to measure execution time while debugging.
+        private readonly Stopwatch _frameRenderStopwatch = new Stopwatch();
+        private readonly Stopwatch _simulationStopwatch = new Stopwatch();
+#endif
+
         //draw a circle on the opentk gamewindow
         public void DrawCircle(int segments, float xpos, float ypos, float radius)
         {
@@ -88,7 +96,7 @@ namespace life
         //grid
         int[,] arrAlive = new int[1000, 1000];
 
-        public void Main()
+        public void Run()
         {
             using (var game = new GameWindow(700, 500, new GraphicsMode(32, 24, 0, 8)))
             {
@@ -106,7 +114,7 @@ namespace life
 
 
                 //run at 60fps
-                game.TargetRenderFrequency = 20;
+                game.TargetRenderFrequency = 60;
 
                 Matrix4 matrix = Matrix4.CreateTranslation(0, 0, 0);
                 game.Load += (sender, e) =>
@@ -268,13 +276,13 @@ namespace life
 
                 game.RenderFrame += (sender, e) =>
                 {
-                    // render graphics
-                    //clears screen
+#if DEBUG
+                    _frameRenderStopwatch.Restart();
+#endif
+                    
+                    // Clear OpenGL window buffer.
                     GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
                     GL.MatrixMode(MatrixMode.Projection);
-
-                    Vector2 followPosition = new Vector2(0, 0);
 
                     matrix = Matrix4.CreateTranslation(ViewPointV);
 
@@ -297,8 +305,9 @@ namespace life
                     else
                         SimulationSlowDownStep = 0;
 
-
-                    Console.WriteLine(SimulationSpeed);
+#if DEBUG
+                    _simulationStopwatch.Restart();
+#endif
                     for (int zx = 20; (zx < SimulationSpeed || zx == 20) && SimulationSlowDownStep == 0; zx++)
                     {
                         int[,] arrNextTo = new int[iSizeOfGrid, iSizeOfGrid];
@@ -340,8 +349,12 @@ namespace life
                         }
                     }
 
+#if DEBUG
+                    _simulationStopwatch.Stop();
+#endif
 
-                    //Now draw the objects to the gamewindow
+                    // Render graphics
+                    // Now draw the objects to the gamewindow
 
                     GL.Color3(Color.Yellow);
 
@@ -367,10 +380,14 @@ namespace life
 
                     DrawCircle(30, ViewPointV.X, ViewPointV.Y, 1);
 
-                    Console.WriteLine(game.RenderFrequency);
-
                     //load onto screen
                     game.SwapBuffers();
+
+#if DEBUG
+                    _frameRenderStopwatch.Stop();
+                    Console.WriteLine("Simulation: {0}ms", _simulationStopwatch.ElapsedMilliseconds);
+                    Console.WriteLine("FrameRender: {0}ms", _frameRenderStopwatch.ElapsedMilliseconds);
+#endif
                 };
 
                 //run the game loop

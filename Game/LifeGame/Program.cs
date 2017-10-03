@@ -1,11 +1,11 @@
-namespace life
+namespace LifeGame
 {
     public static class Program
     {
         public static void Main(string[] args)
         {
-            var MainUI = new Tkui();
-            MainUI.Main();
+            var game = new Game();
+            game.Run();
         }
     }
 }
