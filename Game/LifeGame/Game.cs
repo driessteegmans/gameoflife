@@ -72,7 +72,7 @@ namespace LifeGame
         int iSizeOfGrid = 1000;
 
         //grid
-        int[,] arrAlive = new int[1000, 1000];
+        byte[,] arrAlive = new byte[1000, 1000];
 
         public void Run()
         {
@@ -85,12 +85,9 @@ namespace LifeGame
                 {
                     for (int z = 200; z < iSizeOfGrid - 200; z++)
                     {
-                        arrAlive[i, z] = rand.Next(3);
+                        arrAlive[i, z] = (byte)rand.Next(3);
                     }
                 }
-
-                //Console.WriteLine (arrAlive.ToString ());
-
 
                 //run at 60fps
                 game.TargetRenderFrequency = 60;
@@ -98,7 +95,6 @@ namespace LifeGame
                 Matrix4 matrix = Matrix4.CreateTranslation(0, 0, 0);
                 game.Load += (sender, e) =>
                 {
-                    // setup settings, load textures, sounds
                     game.VSync = VSyncMode.On;
                     game.Title = "LIFE";
                 };
@@ -111,7 +107,8 @@ namespace LifeGame
                 bool MoCdraw = false;
                 Vector3 PrevViewpoint = new Vector3(0f, 0f, 0f);
 
-                //enable textures
+                // enable textures
+                // NOTE(Daan) No textures used in this program, this can be deleted.
                 GL.Enable(EnableCap.Texture2D);
                 GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
 
@@ -260,7 +257,7 @@ namespace LifeGame
 #if DEBUG
                     _frameRenderStopwatch.Restart();
 #endif
-                    
+
                     // Clear OpenGL window buffer.
                     GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
                     GL.MatrixMode(MatrixMode.Projection);
@@ -291,7 +288,7 @@ namespace LifeGame
 #endif
                     for (int zx = 20; (zx < SimulationSpeed || zx == 20) && SimulationSlowDownStep == 0; zx++)
                     {
-                        int[,] arrNextTo = new int[iSizeOfGrid, iSizeOfGrid];
+                        byte[,] arrNextTo = new byte[iSizeOfGrid, iSizeOfGrid];
 
 
                         //calculate neighbours
@@ -299,6 +296,7 @@ namespace LifeGame
                         {
                             for (int y = 0; y < iSizeOfGrid; y++)
                             {
+
                                 if (arrAlive[x, y] == 1 && x > 1 && y > 1 && x < iSizeOfGrid - 1 && y < iSizeOfGrid - 1)
                                 {
                                     arrNextTo[x - 1, y - 1]++;
@@ -318,13 +316,15 @@ namespace LifeGame
                         {
                             for (int y = 0; y < iSizeOfGrid; y++)
                             {
-                                if (arrNextTo[x, y] < 2 || arrNextTo[x, y] > 3)
-                                {
-                                    arrAlive[x, y] = 0;
-                                }
+                                // Swaped order to reduce calls.
+                                // Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
                                 if (arrNextTo[x, y] == 3)
                                 {
                                     arrAlive[x, y] = 1;
+                                }
+                                else if (arrNextTo[x, y] < 2 || arrNextTo[x, y] > 3)
+                                {
+                                    arrAlive[x, y] = 0;
                                 }
                             }
                         }
@@ -340,7 +340,7 @@ namespace LifeGame
                     GL.Color3(Color.Yellow);
 
                     GL.Begin(PrimitiveType.Quads);
-                    
+
                     // Draw the cells.
                     for (int x = 0; x < iSizeOfGrid; x++)
                     {
@@ -358,7 +358,7 @@ namespace LifeGame
                     }
 
                     GL.End();
-                    
+
                     // Draw a circle at the viewpoint.
                     DrawCircle(30, ViewPointV.X, ViewPointV.Y, 1);
 
