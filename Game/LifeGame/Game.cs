@@ -378,8 +378,6 @@ namespace LifeGame
             var translationOffsetX = (float)Math.Round(_halfWidth * _moveTranslation.X);
             var translationOffsetY = (float)Math.Round(_halfHeight * _moveTranslation.Y);
 
-            Console.WriteLine($"X : {translationOffsetX} Y: {translationOffsetY}");
-
             return new Vector2(mouseX / _renderScale - translationOffsetX, mouseY / _renderScale + translationOffsetY);
         }
 
