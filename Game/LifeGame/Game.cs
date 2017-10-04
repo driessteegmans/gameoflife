@@ -66,7 +66,7 @@ namespace LifeGame
             : base(700, 500, GraphicsMode.Default, string.Format(WindowTitle, 0))
         {
             // Setup window information
-            TargetUpdateFrequency = 60;
+            TargetUpdateFrequency = 20;
             TargetRenderFrequency = 60;
             VSync = VSyncMode.On;
 
@@ -226,18 +226,55 @@ namespace LifeGame
             //calculate neighbours
             for (int x = 0; x < GridSize; x++)
             {
-                for (int y = 0; y < GridSize; y++)
+                if (x < 1)//check if x - 1 > 0 and stays in bounds and skip x - 1
                 {
-                    if (_aliveGrid[x, y] == 1 && x > 1 && y > 1 && x < GridSize - 1 && y < GridSize - 1)
+                    for (int y = 0; y < GridSize; y++)
                     {
-                        _neighboursGrid[x - 1, y - 1]++;
-                        _neighboursGrid[x - 1, y]++;
-                        _neighboursGrid[x - 1, y + 1]++;
-                        _neighboursGrid[x, y + 1]++;
-                        _neighboursGrid[x, y - 1]++;
-                        _neighboursGrid[x + 1, y - 1]++;
-                        _neighboursGrid[x + 1, y]++;
-                        _neighboursGrid[x + 1, y + 1]++;
+                        if (_aliveGrid[x, y] == 1 //check if cell was alive in previous update cycle
+                            && y > 1 //check if y - 1 > 0 and stays in bounds
+                            && y < GridSize - 1) //check if y + 1 < GridSize
+                        {
+                            _neighboursGrid[x, y + 1]++;
+                            _neighboursGrid[x, y - 1]++;
+                            _neighboursGrid[x + 1, y - 1]++;
+                            _neighboursGrid[x + 1, y]++;
+                            _neighboursGrid[x + 1, y + 1]++;
+                        }
+                    }
+                }
+                else if (x >= GridSize - 1) //check if x + 1 < GridSize and skip x + 1
+                {
+                    for (int y = 0; y < GridSize; y++)
+                    {
+                        if (_aliveGrid[x, y] == 1 //check if cell was alive in previous update cycle
+                            && y > 1 //check if y - 1 > 0 and stays in bounds
+                            && y < GridSize - 1) //check if y + 1 < GridSize
+                        {
+                            _neighboursGrid[x - 1, y - 1]++;
+                            _neighboursGrid[x - 1, y]++;
+                            _neighboursGrid[x - 1, y + 1]++;
+                            _neighboursGrid[x, y + 1]++;
+                            _neighboursGrid[x, y - 1]++;
+                        }
+                    }
+                }
+                else //if there is no risk for an out of bounds on x run this
+                {
+                    for (int y = 0; y < GridSize; y++)
+                    {
+                        if (_aliveGrid[x, y] == 1 //check if cell was alive in previous update cycle
+                            && y > 1 //check if y - 1 > 0 and stays in bounds
+                            && y < GridSize - 1) //check if y + 1 < GridSize
+                        {
+                            _neighboursGrid[x - 1, y - 1]++;
+                            _neighboursGrid[x - 1, y]++;
+                            _neighboursGrid[x - 1, y + 1]++;
+                            _neighboursGrid[x, y + 1]++;
+                            _neighboursGrid[x, y - 1]++;
+                            _neighboursGrid[x + 1, y - 1]++;
+                            _neighboursGrid[x + 1, y]++;
+                            _neighboursGrid[x + 1, y + 1]++;
+                        }
                     }
                 }
             }
@@ -264,6 +301,7 @@ namespace LifeGame
 
 #if DEBUG
             _simulationStopwatch.Stop();
+            Console.WriteLine("Simulation: {0}ms", _simulationStopwatch.ElapsedMilliseconds);
 #endif
         }
 
@@ -317,10 +355,7 @@ namespace LifeGame
 
 #if DEBUG
             _frameRenderStopwatch.Stop();
-            Console.WriteLine("Simulation: {0}ms", _simulationStopwatch.ElapsedMilliseconds);
             Console.WriteLine("FrameRender: {0}ms", _frameRenderStopwatch.ElapsedMilliseconds);
-
-            _simulationStopwatch.Reset();
 #endif
 
             Title = string.Format(WindowTitle, Math.Round(RenderFrequency, 4));
