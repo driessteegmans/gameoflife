@@ -76,6 +76,7 @@ namespace LifeGame
 
         public void Run()
         {
+            // Create a game window.
             using (var game = new GameWindow(700, 500, new GraphicsMode(32, 24, 0, 8)))
             {
                 //seed array
@@ -169,6 +170,7 @@ namespace LifeGame
 
                     if (e.Mouse.LeftButton == ButtonState.Pressed)
                     {
+                        // TODO(BERKAN) EXPENSIVE !!! TRY - CATCH = EXPENSIVE!!
                         try
                         {
                             arrAlive[(int)MoCdvec.X, (int)MoCdvec.Y] = 1;
@@ -193,6 +195,7 @@ namespace LifeGame
                     switch (e.KeyChar)
                     {
                         case 'f':
+                            // BUG(BERKAN) you can't leave fullscreen.
                             game.WindowState = WindowState.Fullscreen;
                             break;
                         case 'p':
@@ -202,9 +205,9 @@ namespace LifeGame
                                 SimulationSpeed = 0;
                             break;
 
-                        case 'c':
+                        case 'c': // Clears the screen.
 
-                            //seed array
+                            // Fill arrays with zeroes.
                             for (int i = 0; i < iSizeOfGrid; i++)
                             {
                                 for (int z = 0; z < iSizeOfGrid; z++)
@@ -337,13 +340,13 @@ namespace LifeGame
                     GL.Color3(Color.Yellow);
 
                     GL.Begin(PrimitiveType.Quads);
-                    //Draw Cells
+                    
+                    // Draw the cells.
                     for (int x = 0; x < iSizeOfGrid; x++)
                     {
-                        //Console.WriteLine('n');
                         for (int y = 0; y < iSizeOfGrid; y++)
                         {
-                            //	Console.Write(arrAlive[x,y]);
+                            // Check if a cell is alife.
                             if (arrAlive[x, y] == 1)
                             {
                                 GL.Vertex2(x, y);
@@ -355,10 +358,11 @@ namespace LifeGame
                     }
 
                     GL.End();
-
+                    
+                    // Draw a circle at the viewpoint.
                     DrawCircle(30, ViewPointV.X, ViewPointV.Y, 1);
 
-                    //load onto screen
+                    // OpenGL Swap the window buffers to display the new frame.
                     game.SwapBuffers();
 
 #if DEBUG
@@ -368,7 +372,7 @@ namespace LifeGame
 #endif
                 };
 
-                //run the game loop
+                // Start the game loop of the window.
                 game.Run();
             }
         }
