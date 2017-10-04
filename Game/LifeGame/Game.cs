@@ -26,7 +26,14 @@ namespace LifeGame
     {
         #region Constants
 
+        private const float ZoomMinimum = 0.25f;
+        private const float ZoomMaximum = 10f;
+
         private const int GridSize = 1000;
+        private const int GridOffset = 200;
+
+        private const float MoveSpeed = 0.001f;
+        private const float ScrollSpeed = 0.01f;
 
         private const string WindowTitle = "Conway's Game of Life - FPS {0}";
 
@@ -41,23 +48,23 @@ namespace LifeGame
 #endif
         private readonly Random _random = new Random();
 
-        private Matrix4 _projectionMatrix = Matrix4.Identity;
-
-        private Vector2 _mousePosition = new Vector2(0, 0);
-        private Vector2 MoCinitialvec = new Vector2(0f, 0f);
-        private Vector3 PrevViewpoint = new Vector3(0f, 0f, 0f);
-
         // Camera
+        private Matrix4 _transformationMatrix = Matrix4.Identity;
+        private Matrix4 _projectionMatrix = Matrix4.Identity;
         private Vector3 _moveTranslation = new Vector3(Vector3.Zero);
+        private float _halfWidth = 1;
+        private float _halfHeight = 1;
+        private float _renderScale = 1.0f;
 
         // Game State
         private bool _paused = true;
 
         // Grid Information
-
         private byte[,] _aliveGrid = new byte[GridSize, GridSize];
         private readonly byte[,] _neighboursGrid = new byte[GridSize, GridSize];
-        private readonly List<Cell> _aliveList = new List<Cell>();
+        private readonly List<Vector2> _aliveList = new List<Vector2>();
+        private bool _transformUpdateRequired;
+
 
         #endregion
 
@@ -74,65 +81,62 @@ namespace LifeGame
             // Window Resize
             Resize += (sender, e) =>
             {
-                Console.WriteLine("Window resize.");
-
-                _projectionMatrix = Matrix4.CreateOrthographicOffCenter(0, Width, Height, 0, 0, 1);
-
                 GL.Viewport(0, 0, Width, Height);
-            };
 
-            // Mouse Click Events
-            Mouse.ButtonDown += (sender, e) =>
-            {
-                MoCinitialvec = MousePosition(e.X, e.Y);
-                _mousePosition = MoCinitialvec;
+                _halfWidth = (float)Width / 2;
+                _halfHeight = (float)Height / 2;
 
-
-                //start moving viewpoint
-                if (e.Button == MouseButton.Right)
-                {
-                    PrevViewpoint = _moveTranslation;
-                }
+                _projectionMatrix = Matrix4.CreateOrthographicOffCenter(0, Width, Height, 0, -ZoomMaximum, 1);
+                CalculateTransform();
             };
 
             // Mouse wheel scrolling - zoom in / outscroll wheel - zoom in / out
             Mouse.WheelChanged += (sender, e) =>
             {
-                /*if (ZoomMulti - e.DeltaPrecise * 0.001f > 0)
+                // Calculate the new zoom scale.
+                _renderScale += e.DeltaPrecise * ScrollSpeed;
+
+                // Cap zoom scale to 1.
+                if (_renderScale < ZoomMinimum)
                 {
-                    ZoomMulti -= e.DeltaPrecise * 0.001f;
-                }*/
+                    _renderScale = ZoomMinimum;
+                }
+                else if (_renderScale > ZoomMaximum)
+                {
+                    _renderScale = ZoomMaximum;
+                }
+
+                GL.PointSize(_renderScale);
+
+                // Calculate new transformation Matrix.
+                CalculateTransform();
             };
 
             // Mouse moving
             Mouse.Move += (sender, e) =>
             {
-                //for adding object
-                _mousePosition = MousePosition(e.X, e.Y);
-
+                // Add call to the grid.
                 if (e.Mouse.LeftButton == ButtonState.Pressed)
                 {
-                    var mouseX = (int)_mousePosition.X;
-                    var mouseY = (int)_mousePosition.Y;
+                    var gridCoords = MouseToGridCoords(e.X, e.Y);
 
-                    // TODO(BERKAN) EXPENSIVE !!! TRY - CATCH = EXPENSIVE!!
-                    try
+                    var gridX = (int)gridCoords.X;
+                    var gridY = (int)gridCoords.Y;
+
+                    if (gridX > 0 && gridY > 0 && gridX < GridSize && gridY < GridSize)
                     {
-                        if (_aliveGrid[mouseX, mouseY] != 1)
+                        if (_aliveGrid[gridX, gridY] != 1)
                         {
-                            CreateCell(mouseX, mouseY);
+                            CreateCell(gridX, gridY);
                         }
-                    }
-                    catch
-                    {
                     }
                 }
 
                 //for moving viewpoint
                 if (e.Mouse.RightButton == ButtonState.Pressed)
                 {
-                    _moveTranslation = new Vector3((_mousePosition - MoCinitialvec).X / (Width),
-                                     (_mousePosition - MoCinitialvec).Y / (Height), 0) + PrevViewpoint;
+                    _moveTranslation = Vector3.Add(_moveTranslation, new Vector3(MoveSpeed * e.XDelta, MoveSpeed * -e.YDelta, 0));
+                    CalculateTransform();
                 }
             };
 
@@ -141,6 +145,7 @@ namespace LifeGame
             {
                 switch (e.KeyChar)
                 {
+                    case 'F':
                     case 'f':
                         {
                             WindowState = WindowState != WindowState.Fullscreen
@@ -148,12 +153,15 @@ namespace LifeGame
                                 : WindowState.Normal;
                             break;
                         }
+
+                    case 'P':
                     case 'p':
                         {
                             _paused = !_paused;
                             break;
                         }
 
+                    case 'C':
                     case 'c': // Clears the screen.
                         {
                             // Fill arrays with zeroes.
@@ -161,13 +169,12 @@ namespace LifeGame
                             break;
                         }
 
-
+                    case 'V':
                     case 'v':
                         {
                             SeedGrid();
                             break;
                         }
-
                 }
             };
 
@@ -182,6 +189,7 @@ namespace LifeGame
 
         private void Game_UpdateFrame(object sender, FrameEventArgs e)
         {
+
             if (Keyboard[Key.Escape])
             {
                 Exit();
@@ -191,31 +199,31 @@ namespace LifeGame
             if (Keyboard[Key.A])
             {
                 _moveTranslation.X += 0.01f;
+                CalculateTransform();
             }
             else if (Keyboard[Key.D])
             {
                 _moveTranslation.X -= 0.01f;
+                CalculateTransform();
             }
 
             // Move up or down.
             if (Keyboard[Key.W])
             {
                 _moveTranslation.Y -= 0.01f;
+                CalculateTransform();
             }
             else if (Keyboard[Key.S])
             {
                 _moveTranslation.Y += 0.01f;
+                CalculateTransform();
             }
 
-            // Zoom-in or out.
-            /*if (Keyboard[Key.Z])
+            if (_transformUpdateRequired)
             {
-                ZoomMulti += 0.0001f;
+                _transformUpdateRequired = false;
+                _transformationMatrix = Matrix4.CreateScale(_renderScale) * _projectionMatrix * Matrix4.CreateTranslation(_moveTranslation);
             }
-            else if (Keyboard[Key.X] && ZoomMulti > 0.001f)
-            {
-                ZoomMulti -= 0.0001f;
-            }*/
 
             // Do not run the simulations if the game is paused.
             if (_paused)
@@ -315,7 +323,7 @@ namespace LifeGame
         {
             _aliveGrid[x, y] = 1;
 
-            _aliveList.Add(new Cell
+            _aliveList.Add(new Vector2
             {
                 X = x,
                 Y = y
@@ -333,7 +341,7 @@ namespace LifeGame
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
             GL.MatrixMode(MatrixMode.Projection);
-            GL.LoadMatrix(ref _projectionMatrix);
+            GL.LoadMatrix(ref _transformationMatrix);
 
             // Render graphics
 
@@ -344,9 +352,6 @@ namespace LifeGame
             foreach (var cell in _aliveList)
             {
                 GL.Vertex2(cell.X, cell.Y);
-                // GL.Vertex2(cell.X, cell.Y + 1);
-                // GL.Vertex2(cell.X + 1, cell.Y + 1);
-                // GL.Vertex2(cell.X + 1, cell.Y);
             }
 
             GL.End();
@@ -368,11 +373,14 @@ namespace LifeGame
         /// <param name="mouseX"></param>
         /// <param name="mouseY"></param>
         /// <returns></returns>
-        public Vector2 MousePosition(float mouseX, float mouseY)
+        public Vector2 MouseToGridCoords(float mouseX, float mouseY)
         {
-            // TODO Implement zoom.
+            var translationOffsetX = (float)Math.Round(_halfWidth * _moveTranslation.X);
+            var translationOffsetY = (float)Math.Round(_halfHeight * _moveTranslation.Y);
 
-            return new Vector2(mouseX, mouseY);
+            Console.WriteLine($"X : {translationOffsetX} Y: {translationOffsetY}");
+
+            return new Vector2(mouseX / _renderScale - translationOffsetX, mouseY / _renderScale + translationOffsetY);
         }
 
         private void ClearGrid()
@@ -386,10 +394,12 @@ namespace LifeGame
             // Clear the old grid.
             ClearGrid();
 
+            const int target = GridSize - GridOffset;
+
             // Seed the grid with random data.
-            for (var x = 0; x < GridSize; x++)
+            for (var x = GridOffset; x < target; x++)
             {
-                for (var y = 0; y < GridSize; y++)
+                for (var y = GridOffset; y < target; y++)
                 {
                     var value = (byte)_random.Next(3);
 
@@ -403,6 +413,11 @@ namespace LifeGame
                     }
                 }
             }
+        }
+
+        private void CalculateTransform()
+        {
+            _transformUpdateRequired = true;
         }
     }
 }
