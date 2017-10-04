@@ -52,6 +52,7 @@ namespace LifeGame
         private Matrix4 _transformationMatrix = Matrix4.Identity;
         private Matrix4 _projectionMatrix = Matrix4.Identity;
         private Vector3 _moveTranslation = new Vector3(Vector3.Zero);
+        private bool _transformUpdateRequired;
         private float _halfWidth = 1;
         private float _halfHeight = 1;
         private float _renderScale = 1.0f;
@@ -63,8 +64,7 @@ namespace LifeGame
         private byte[,] _aliveGrid = new byte[GridSize, GridSize];
         private readonly byte[,] _neighboursGrid = new byte[GridSize, GridSize];
         private readonly List<Vector2> _aliveList = new List<Vector2>();
-        private bool _transformUpdateRequired;
-
+        private Vector2 _gridCoords = new Vector2(0);
 
         #endregion
 
@@ -112,30 +112,35 @@ namespace LifeGame
                 CalculateTransform();
             };
 
+            Mouse.ButtonUp += (s, e) =>
+            {
+                if (e.Button != MouseButton.Left)
+                    return;
+
+                var gridCoords = MouseToGridCoords(e.X, e.Y);
+
+                PlaceCell((int) gridCoords.X, (int) gridCoords.Y);
+            };
+
             // Mouse moving
             Mouse.Move += (sender, e) =>
             {
+                _gridCoords = MouseToGridCoords(e.X, e.Y);
+
                 // Add call to the grid.
                 if (e.Mouse.LeftButton == ButtonState.Pressed)
                 {
-                    var gridCoords = MouseToGridCoords(e.X, e.Y);
+                    var gridX = (int)_gridCoords.X;
+                    var gridY = (int)_gridCoords.Y;
 
-                    var gridX = (int)gridCoords.X;
-                    var gridY = (int)gridCoords.Y;
-
-                    if (gridX > 0 && gridY > 0 && gridX < GridSize && gridY < GridSize)
-                    {
-                        if (_aliveGrid[gridX, gridY] != 1)
-                        {
-                            CreateCell(gridX, gridY);
-                        }
-                    }
+                    PlaceCell(gridX, gridY);
                 }
 
                 //for moving viewpoint
                 if (e.Mouse.RightButton == ButtonState.Pressed)
                 {
-                    _moveTranslation = Vector3.Add(_moveTranslation, new Vector3(MoveSpeed * e.XDelta, MoveSpeed * -e.YDelta, 0));
+                    var moveDelta = new Vector3(MoveSpeed * e.XDelta, MoveSpeed * -e.YDelta, 0);
+                    _moveTranslation = Vector3.Add(_moveTranslation, moveDelta);
                     CalculateTransform();
                 }
             };
@@ -340,20 +345,39 @@ namespace LifeGame
             // Clear OpenGL window buffer.
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
+            // Set matrix for rendering.
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadMatrix(ref _transformationMatrix);
 
-            // Render graphics
+            // Render a line arround the grid.
+            GL.Color3(Color.DarkRed);
+            GL.Begin(PrimitiveType.LineLoop);
+            {
+                GL.Vertex2(0, 0);
+                GL.Vertex2(0, GridSize);
+                GL.Vertex2(GridSize, GridSize);
+                GL.Vertex2(GridSize, 0);
+            }
+            GL.End();
 
+            // Render Cells.
             GL.Color3(Color.Yellow);
             GL.Begin(PrimitiveType.Points);
-
-            // Draw the cells.
-            foreach (var cell in _aliveList)
             {
-                GL.Vertex2(cell.X, cell.Y);
+                // Draw the cells.
+                foreach (var cell in _aliveList)
+                {
+                    GL.Vertex2(cell.X, cell.Y);
+                }
             }
+            GL.End();
 
+            // Render current mouse position.
+            GL.Color3(Color.Cyan);
+            GL.Begin(PrimitiveType.Points);
+            {
+                GL.Vertex2(_gridCoords);
+            }
             GL.End();
 
             // OpenGL Swap the window buffers to display the new frame.
@@ -375,10 +399,14 @@ namespace LifeGame
         /// <returns></returns>
         public Vector2 MouseToGridCoords(float mouseX, float mouseY)
         {
-            var translationOffsetX = (float)Math.Round(_halfWidth * _moveTranslation.X);
-            var translationOffsetY = (float)Math.Round(_halfHeight * _moveTranslation.Y);
+            var translationOffsetX = _halfWidth * _moveTranslation.X / _renderScale;
+            var translationOffsetY = _halfHeight * _moveTranslation.Y / _renderScale;
 
-            return new Vector2(mouseX / _renderScale - translationOffsetX, mouseY / _renderScale + translationOffsetY);
+            return new Vector2
+            {
+                X = (float)Math.Round(mouseX / _renderScale - translationOffsetX),
+                Y = (float)Math.Round(mouseY / _renderScale + translationOffsetY),
+            };
         }
 
         private void ClearGrid()
@@ -399,17 +427,23 @@ namespace LifeGame
             {
                 for (var y = GridOffset; y < target; y++)
                 {
-                    var value = (byte)_random.Next(3);
-
-                    if (value == 1)
+                    var value = _random.Next(10);
+                    if (value == 5)
                     {
                         CreateCell(x, y);
                     }
-                    else
-                    {
-                        _aliveGrid[x, y] = value;
-                    }
                 }
+            }
+        }
+
+        private void PlaceCell(int x, int y)
+        {
+            if (x <= 0 || y <= 0 || x >= GridSize || y >= GridSize)
+                return;
+
+            if (_aliveGrid[x, y] != 1)
+            {
+                CreateCell(x, y);
             }
         }
 
