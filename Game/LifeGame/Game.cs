@@ -19,6 +19,7 @@ using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Input;
+using System.IO;
 
 namespace LifeGame
 {
@@ -45,6 +46,9 @@ namespace LifeGame
         // Debug stopwatches to measure execution time while debugging.
         private readonly Stopwatch _frameRenderStopwatch = new Stopwatch();
         private readonly Stopwatch _simulationStopwatch = new Stopwatch();
+        // Uncomment to writo file.
+        //private static FileStream filestream = new FileStream("out.txt", FileMode.Create);
+        //private static StreamWriter streamwriter = new StreamWriter(filestream);
 #endif
         private readonly Random _random = new Random();
 
@@ -73,10 +77,15 @@ namespace LifeGame
         public Game()
             : base(700, 500, GraphicsMode.Default, string.Format(WindowTitle, 0))
         {
+
             // Setup window information
             TargetUpdateFrequency = 20;
             TargetRenderFrequency = 60;
             VSync = VSyncMode.On;
+            // Uncomment to output to file.
+            //streamwriter.AutoFlush = true;
+            //Console.SetOut(streamwriter);
+            //Console.SetError(streamwriter);
 
             // Window Resize
             Resize += (sender, e) =>
